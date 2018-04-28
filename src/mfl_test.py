@@ -1,34 +1,11 @@
 from mfl.api import *
-from model.auction_result import Auction_Result
 
 import pprint
-import json
 import dpath.util
 
-mflTest = Api(2018)
+mfl_api = Api(2018)
 
-# print(dir(mflTest))
-
-# print(mflTest.nfl_schedule())
-
-# pprint.pprint(mflTest)
-# pprint.pprint(mflTest.league(26496))
-
-results = mflTest.auction_results(26496)
-
-# auc_res = json.loads(results, object_hook=Auction_Result.as_auction_result)
-# dumps = json.dumps(results)
-
-# parsed_json = json.dumps(results)
-# pprint.pprint(results)
-# pprint.pprint(parsed_json)
-
-# completed_auctions = results['auctionResults']
-#
-# auction = completed_auctions['auctionUnit']
-
-# something = [x['auction'] for x in results['auctionResults']['auctionUnit'].values()]
-# pprint.pprint(results['auctionResults']['auctionUnit'][0]['unit'])
+results = mfl_api.auction_results(26496)
 
 leagues = dpath.util.values(results, "auctionResults/auctionUnit/*/unit")
 drafts = dpath.util.values(results, "auctionResults/auctionUnit/*/auction")
@@ -42,7 +19,7 @@ for idx in range(len(leagues)):
   for auction in drafts[idx]:
     if isinstance(auction, dict):
       player_id = auction['player']
-      player_info = mflTest.players(
+      player_info = mfl_api.players(
           players=[player_id],
           details=True
       )['players']['player']
@@ -68,8 +45,8 @@ for idx in range(len(leagues)):
       #
       # print(franchise_info)
 
-# player_object = mflTest.players(players=[13128])
-# pprint.pprint(player_object)
+player_object = mfl_api.players(players=[13128])
+pprint.pprint(player_object)
 
 # ct = 1
 # ct_b = 1
