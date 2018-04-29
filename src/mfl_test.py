@@ -93,58 +93,46 @@ for position in eligible_positions:
       body=body).execute()
   print('{0} cells updated.'.format(result.get('updatedCells')))
 
-search_results = pp.player_search({
-  'id': '13613',
-  'name': 'Gurley, Todd',
-  'college': 'North Carolina State'
-}, 'OR')
-pprint.pprint(search_results)
+results = mfl_api.auction_results(26496)
 
+leagues = dpath.util.values(results, "auctionResults/auctionUnit/*/unit")
+drafts = dpath.util.values(results, "auctionResults/auctionUnit/*/auction")
 
-# results = mfl_api.auction_results(26496)
-#
-# leagues = dpath.util.values(results, "auctionResults/auctionUnit/*/unit")
-# drafts = dpath.util.values(results, "auctionResults/auctionUnit/*/auction")
-#
-# sort_on = 'name'
-# pl.players = sorted(pl.players, key=lambda item: item[sort_on])
-# # pprint.pprint(data_sorted)
-# pprint.pprint(pl.players)
+for idx in range(len(leagues)):
+  # print(leagues[idx])
+  # print(drafts[idx])
+  # print("Players from Auction #" + str(idx))
+  for auction in drafts[idx]:
+    if isinstance(auction, dict):
+      player_id = auction.get('player')
+      player_info = pp.player_search({'id': player_id})
 
-# pprint.pprint(result)
+      # print('Searching for ID: {}...'.format(player_id))
+      # pprint.pprint(player_info)
 
-# for idx in range(len(leagues)):
-#   # print(leagues[idx])
-#   # print(drafts[idx])
-#   # print("Players from Auction #" + str(idx))
-#   for auction in drafts[idx]:
-#     if isinstance(auction, dict):
-#       player_id = auction['player']
-#       player_info = mfl_api.players(
-#           players=[player_id],
-#           details=True
-#       )['players']['player']
-#
-#       player_name = player_info['name']
-#       player_pos = player_info['position']
-#
-#       # print(player_info)
-#
-#       # print(auction)
-#       #
-#       # print(
-#       #     "Player ID: " + player_id + ", " +
-#       #     "Player Name: " + player_name + ", " +
-#       #     "Player Position: " + player_pos
-#       # )
-#
-#       # franchise_id = auction['franchise']
-#       # franchise_info = mflTest.league(
-#       #     league_id=26496,
-#       #     franchise_id=franchise_id
-#       # )
-#       #
-#       # print(franchise_info)
+      if isinstance(player_info, dict):
+        player_name = player_info.get('name')
+        player_pos = player_info.get('position')
+
+        # print(player_info)
+
+        # print(auction)
+
+        print('ID: {}; Name: {}; Position: {}; Year: {}; Scholarship: {}'.format(
+            player_info.get('id'),
+            player_info.get('display_name'),
+            player_info.get('position'),
+            player_info.get('eligibility'),
+            auction.get('winningBid'))
+        )
+
+      # franchise_id = auction['franchise']
+      # franchise_info = mflTest.league(
+      #     league_id=26496,
+      #     franchise_id=franchise_id
+      # )
+      #
+      # print(franchise_info)
 
 
 # ct = 1

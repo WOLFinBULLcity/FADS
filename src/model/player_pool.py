@@ -17,6 +17,10 @@ class Player_Pool:
     self.filter_by_position()
     self.alphabetize()
 
+  @staticmethod
+  def get_display_name(name):
+    return ' '.join(name.split(', ')[::-1])
+
   def eligible_player_generator(self):
     default = 'N/A'
     for player in self.players:
@@ -28,6 +32,7 @@ class Player_Pool:
         if draft_year not in self.years.keys():
           continue
         player['eligibility'] = self.years[draft_year]
+        player['display_name'] = self.get_display_name(player.get('name'))
       yield player
 
   def filter_by_position(self):
