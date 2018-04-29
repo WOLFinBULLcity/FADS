@@ -49,6 +49,8 @@ class Api:
             details (bool): If True, returns extra information including weight, birthdate, draft year, and ID on other
                 sites like Rotoworld, ESPN, and CBS.
         """
+        # print("Calling mfl to get players since: " + str(since))
+
         params = {'TYPE': 'players'}
         if details:
             params['DETAILS'] = 1
