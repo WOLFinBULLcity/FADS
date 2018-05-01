@@ -4,50 +4,66 @@ from __future__ import print_function
 from apiclient.discovery import build
 from httplib2 import Http
 from mfl.api import Api
+from model.league_data import League_Data
 from model.player_pool import Player_Pool
 from oauth2client import file, client, tools
 
+import config
 import datetime
 import dpath.util
+import itertools
 import os
 import pickle
 import pprint
 
-player_list_file = './pickle/player_pool_file.pickle'
-mfl_api = Api(2018)
-
-eligible_positions = ['QB', 'RB', 'WR', 'TE']
-eligible_years = {
-  '2018': 'FR',
-  '2017': 'SO',
-  '2016': 'JR',
-  '2015': 'SR'
-}
+player_pool_file = './pickle/player_pool_file.pickle'
+league_data_file = './pickle/league_data_file.pickle'
+mfl_api = Api(config.LEAGUE_CONFIG['year'])
 
 now = datetime.datetime.now()
 today = now.strftime('%m/%d/%Y')
 
 def get_player_pool():
-  player_result = mfl_api.players(details=True)
+  player_info = mfl_api.players(details=True)
   return Player_Pool(
       last_update=today,
-      players=player_result['players']['player'],
-      positions=eligible_positions,
-      years=eligible_years
+      players=player_info['players']['player'],
+      positions=config.ELIGIBILITY_CONFIG['eligible_positions'],
+      years=config.ELIGIBILITY_CONFIG['eligible_years']
+  )
+
+def get_league_data():
+  league_info = mfl_api.league(config.LEAGUE_CONFIG['id'])
+  return League_Data(
+      last_update=today,
+      conferences=league_info['league']['conferences']['conference'],
+      divisions=league_info['league']['divisions']['division'],
+      franchises=league_info['league']['franchises']['franchise']
   )
 
 # Check if we have a player pool saved
-if os.path.isfile(player_list_file):
-  with open(player_list_file, 'rb') as f:
+if os.path.isfile(player_pool_file):
+  with open(player_pool_file, 'rb') as f:
     pp = pickle.load(f)
 else:
   # Create the instance of our Player Pool
-  player_result = mfl_api.players(details=True)
   pp = get_player_pool()
+
+# Check if we have league data saved
+if os.path.isfile(league_data_file):
+  with open(league_data_file, 'rb') as f:
+    ld = pickle.load(f)
+else:
+  # Create the instance of our League Data
+  ld = get_league_data()
 
 # Check if the player pool needs an update
 if today > pp.last_update:
   pp = get_player_pool()
+
+# Check if our league data needs an update
+if today > ld.last_update:
+  ld = get_league_data()
 
 # Setup the Sheets API
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
@@ -57,110 +73,113 @@ if not creds or creds.invalid:
   flow = client.flow_from_clientsecrets('client_secret.json', SCOPES)
   creds = tools.run_flow(flow, store)
 service = build('sheets', 'v4', http=creds.authorize(Http()))
-
-# Call the Sheets API
-SPREADSHEET_ID = '1UjAaJzIbqkYEpDzn0PQB3KQTD8wSdSXg3hsOW-6WOac'
 VALUE_INPUT_OPTION = 'USER_ENTERED'
 
-for position in eligible_positions:
-  pos_ref = '{}s'.format(position)
-  pos_list = getattr(pp, pos_ref)
+def update_player_pools():
+  # Call the Sheets API
+  for conference_id, conference in ld.conferences.items():
+    for position in config.ELIGIBILITY_CONFIG['eligible_positions']:
+      SPREADSHEET_ID = config.NOMINATION_SHEETS[conference_id]
 
-  RANGE_NAME = '{}!A3:F1000'.format(pos_ref)
+      pos_ref = '{}s'.format(position)
+      pos_list = getattr(pp, pos_ref)
 
-  values = []
-  for player in pos_list:
-    # Position | Player Name | Eligibility Year | NFL Team | College Team | MFL ID
-    values.append(
-        [
-          player.get('position'),
-          player.get('name'),
-          player.get('eligibility'),
-          player.get('team'),
-          player.get('college'),
-          player.get('id')
-        ]
-    )
-  body = {
-    'range': RANGE_NAME,
-    'majorDimension': 'ROWS',
-    'values': values
-  }
-  result = service.spreadsheets().values().update(
-      spreadsheetId=SPREADSHEET_ID,
-      range=RANGE_NAME,
-      valueInputOption=VALUE_INPUT_OPTION,
-      body=body).execute()
-  print('{0} cells updated.'.format(result.get('updatedCells')))
+      RANGE_NAME = '{}!A3:H1000'.format(pos_ref)
+      default = 'N/A'
 
-results = mfl_api.auction_results(26496)
-
-leagues = dpath.util.values(results, "auctionResults/auctionUnit/*/unit")
-drafts = dpath.util.values(results, "auctionResults/auctionUnit/*/auction")
-
-for idx in range(len(leagues)):
-  # print(leagues[idx])
-  # print(drafts[idx])
-  # print("Players from Auction #" + str(idx))
-  for auction in drafts[idx]:
-    if isinstance(auction, dict):
-      player_id = auction.get('player')
-      player_info = pp.player_search({'id': player_id})
-
-      # print('Searching for ID: {}...'.format(player_id))
-      # pprint.pprint(player_info)
-
-      if isinstance(player_info, dict):
-        player_name = player_info.get('name')
-        player_pos = player_info.get('position')
-
-        # print(player_info)
-
-        # print(auction)
-
-        print('ID: {}; Name: {}; Position: {}; Year: {}; Scholarship: {}'.format(
-            player_info.get('id'),
-            player_info.get('display_name'),
-            player_info.get('position'),
-            player_info.get('eligibility'),
-            auction.get('winningBid'))
+      values = []
+      for player_id, player in pos_list.items():
+        # Position | Player Name | Eligibility Year | NFL Team | College Team | MFL ID
+        values.append(
+            [
+              player.get('position', default),
+              player.get('name', default),
+              player.get('eligibility', default),
+              player.get('birthdate_formatted', default),
+              player.get('age', default),
+              player.get('team', default),
+              player.get('college', default),
+              player_id
+            ]
         )
+      body = {
+        'range': RANGE_NAME,
+        'majorDimension': 'ROWS',
+        'values': values
+      }
+      result = service.spreadsheets().values().update(
+          spreadsheetId=SPREADSHEET_ID,
+          range=RANGE_NAME,
+          valueInputOption=VALUE_INPUT_OPTION,
+          body=body).execute()
+      print('{0}: {1} cells updated.'.format(
+          conference.get('name'),
+          result.get('updatedCells'))
+      )
 
-      # franchise_id = auction['franchise']
-      # franchise_info = mflTest.league(
-      #     league_id=26496,
-      #     franchise_id=franchise_id
-      # )
-      #
-      # print(franchise_info)
+# update_player_pools()
 
+# pprint.pprint(ld.league_search(ld.franchises, {'id': '0005'}))
 
-# ct = 1
-# ct_b = 1
-# ct_c = 1
-# for draft in auction:
-#   print('IDK #' + str(ct))
-#   ct_b = 1
-#   pprint.pprint(draft.keys())
+# dudes = pp.player_search({'eligibility': 'FR'}, target=pp.QBs)
+# for dude in dudes:
+#   print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}'.format(
+#       dude.get('name'),
+#       dude.get('position'),
+#       dude.get('draft_year'),
+#       dude.get('college'),
+#       dude.get('team')
+#   ))
+
+# transactions = mfl_api.transactions(
+#     league_id=config.LEAGUE_CONFIG['id'],
+#     transaction_type='AUCTION_BID'
+# )['transactions']['transaction']
 #
-#   conference = draft['unit']
-#   completed_auctions = draft['auction']
+# for t in transactions:
+#   print(t)
 #
-  # for b in conference_draft.values():
-  #   # print(type(b))
-  #   ct_b += 1
-  #   if isinstance(b, list):
-  #     for c in b:
-  #       auct = Auction_Result(c)
-  #       # pprint.pprint(c)
-  #       # print(auct.winningBid)
-  #       ct_c += 1
-  # ct += 1
+# results = mfl_api.auction_results(config.LEAGUE_CONFIG['id'])
+#
+# auctionUnits = results['auctionResults']['auctionUnit']
+# auction_data = {}
+#
+# for auctionUnit in auctionUnits:
+#   auction_data[auctionUnit.get('unit')[-2:]] = auctionUnit.get('auction')
 
-# pprint.pprint(auc_res)
+# transaction = '12610|173.00|'
+# player_id, raw_amount, discard = transaction.split('|')
+# new_string = ''.join(itertools.takewhile(str.isdigit, raw_amount))
+#
+# print('transaction: {}; player_id: {}; raw_amount: {}; new_string: {}'.format(
+#     transaction,
+#     player_id,
+#     raw_amount,
+#     new_string
+# ))
 
-# pprint.pprint(mflTest.players(None,None,True))
+# for f_key in ld.franchises.keys():
+#   # pprint.pprint(franchise)
+#   c_key = ld.conference_id_from_franchise_id(f_key)
+#   pprint.pprint(c_key)
+#   # f = ld.franchises[f_key]
+#   # c = ld.conferences[c_key]
+#   # print('Franchise: {}; Conference: {}'.format(
+#   #     f.get('name'),
+#   #     c.get('name')
+#   # ))
+
+# c_id = ld.conference_id_from_franchise_id('0005')
+# print(c_id)
+
+
+# pprint.pprint(ld.franchises)
+# pprint.pprint(ld.divisions)
+# pprint.pprint(ld.conferences)
 
 # Save records
-with open(player_list_file, 'wb') as f:
+with open(player_pool_file, 'wb') as f:
   pickle.dump(pp, f)
+with open(league_data_file, 'wb') as f:
+  pickle.dump(ld, f)
+
