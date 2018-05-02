@@ -2,8 +2,10 @@
 
 from __future__ import print_function
 from apiclient.discovery import build
+from decimal import *
 from httplib2 import Http
 from mfl.api import Api
+from model.auction_data import Auction_Data
 from model.league_data import League_Data
 from model.player_pool import Player_Pool
 from oauth2client import file, client, tools
@@ -121,24 +123,49 @@ def update_player_pools():
 
 # pprint.pprint(ld.league_search(ld.franchises, {'id': '0005'}))
 
-# dudes = pp.player_search({'eligibility': 'FR'}, target=pp.QBs)
-# for dude in dudes:
-#   print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}'.format(
+# dudes = pp.player_search({'display_name': 'Tyler Lockett'})
+# for dude_id, dude in dudes.items():
+#   print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}; ID: {}'.format(
 #       dude.get('name'),
 #       dude.get('position'),
 #       dude.get('draft_year'),
 #       dude.get('college'),
-#       dude.get('team')
+#       dude.get('team'),
+#       dude_id
 #   ))
 
-# transactions = mfl_api.transactions(
-#     league_id=config.LEAGUE_CONFIG['id'],
-#     transaction_type='AUCTION_BID'
-# )['transactions']['transaction']
-#
-# for t in transactions:
-#   print(t)
-#
+transactions = mfl_api.transactions(
+    league_id=config.LEAGUE_CONFIG['id']
+)['transactions']['transaction']
+
+ad = Auction_Data(ld=ld, transactions=transactions)
+
+c_totals = {c: {'spent': 0, 'count': 0} for c in ld.conferences}
+for c, pa in ad.conference_auctions.items():
+  for p, a in pa.items():
+    for s in a:
+      # pprint.pprint(a)
+      # print('Player: {}; Type: {}'.format(p, type(s)))
+      c_totals[c]['spent'] += int(s.get('top_bid'))
+      c_totals[c]['count'] += 1
+
+for c_id, info in c_totals.items():
+  funds = 16000 if ld.conferences[c_id]['name'] == 'Mid 16' else 14000
+  spent = info['spent']
+  getcontext().prec = 4
+  allocation = Decimal(spent) / Decimal(funds) * 100
+
+  print('{}; Auctions: {}; Spent: ${}; Funds: ${}; {}% Allocation'.format(
+      ld.conferences[c_id]['name'],
+      info['count'],
+      spent,
+      funds,
+      allocation
+  ))
+
+
+
+
 # results = mfl_api.auction_results(config.LEAGUE_CONFIG['id'])
 #
 # auctionUnits = results['auctionResults']['auctionUnit']
@@ -172,6 +199,24 @@ def update_player_pools():
 # c_id = ld.conference_id_from_franchise_id('0005')
 # print(c_id)
 
+# pprint.pprint(pp.players[0].get('id'))
+
+
+# teams = ld.league_search(
+#     {
+#       'division': '00',
+#       'name': 'NC State'
+#     },
+#     target=ld.franchises)
+#
+# for team_id, team_info in teams.items():
+#   print('Team: {}; Stadium: {}; Division: {}; Team ID: {}'.format(
+#       team_info.get('name'),
+#       team_info.get('stadium'),
+#       team_info.get('division'),
+#       team_id
+#   ))
+#
 
 # pprint.pprint(ld.franchises)
 # pprint.pprint(ld.divisions)

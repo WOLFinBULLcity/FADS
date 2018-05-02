@@ -83,7 +83,7 @@ class Player_Pool:
   def player_search_generator(target, params, expression):
     default = 'N/A'
 
-    for player in target:
+    for player_id, player in target.items():
       hits = 0
       for k, v in params.items():
         found_value = player.get(k, default)
@@ -96,12 +96,12 @@ class Player_Pool:
         continue
       elif expression == 'OR' and hits < 1:
         continue
-      yield player
+      yield player_id, player
 
   def player_search(self, params, target=None, expression='AND'):
     if target is None:
       target = self.eligible_players
-    found_players = []
-    for player in self.player_search_generator(target, params, expression):
-      found_players.append(player)
-    return found_players if len(found_players) != 1 else found_players[0]
+    found_players = {}
+    for p_id, player in self.player_search_generator(target, params, expression):
+      found_players[p_id] = player
+    return found_players

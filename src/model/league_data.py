@@ -23,7 +23,7 @@ class League_Data:
   def league_search_generator(target, params, expression):
     default = 'N/A'
 
-    for t in target:
+    for target_id, t in target.items():
       hits = 0
       for k, v in params.items():
         found_value = t.get(k, default)
@@ -36,16 +36,17 @@ class League_Data:
         continue
       elif expression == 'OR' and hits < 1:
         continue
-      yield t
+      yield target_id, t
 
   def league_search(self, params, target=None, expression='AND'):
     if target is None:
       target = self.franchises
 
-    results = []
-    for r in self.league_search_generator(target, params, expression):
-      results.append(r)
-    return results if len(results) != 1 else results[0]
+    results = {}
+    for r_id, r in self.league_search_generator(target, params, expression):
+      results[r_id] = r
+    # return results if len(results) != 1 else results.popitem()
+    return results
 
   def conference_id_from_franchise_id(self, franchise_id: str):
     id = self.divisions[self.franchises[franchise_id]["division"]]["conference"]
