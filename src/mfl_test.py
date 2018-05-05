@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 from apiclient.discovery import build
-from decimal import *
 from httplib2 import Http
 from mfl.api import Api
 from model.auction_data import Auction_Data
@@ -12,8 +11,6 @@ from oauth2client import file, client, tools
 
 import config
 import datetime
-import dpath.util
-import itertools
 import os
 import pickle
 import pprint
@@ -86,17 +83,39 @@ def update_player_pools():
       pos_ref = '{}s'.format(position)
       pos_list = getattr(pp, pos_ref)
 
-      RANGE_NAME = '{}!A3:H1000'.format(pos_ref)
+      RANGE_NAME = '{}{}'.format(
+          pos_ref,
+          config.NOMINATION_SHEET_CONFIG['cell_range']
+      )
       default = 'N/A'
 
       values = []
       for player_id, player in pos_list.items():
-        # Position | Player Name | Eligibility Year | NFL Team | College Team | MFL ID
+        first_copy_top_bid = ''
+        second_copy_top_bid = ''
+
+        # pa = ad.auctions_for_player(
+        #     conference_id=conference_id,
+        #     player_id=player_id
+        # )
+        # if pa is not None:
+        #   if pa[0]['status'] == 'closed':
+        #     first_copy_top_bid = '${}'.format(pa[0]['top_bid'])
+        #
+        #     if len(pa) > 1 and pa[1]['status'] == 'closed':
+        #       second_copy_top_bid = '${}'.format(pa[1]['top_bid'])
+
+        # aav = ad.average_price_for_player(player_id=player_id)
+        # aav_str = '' if aav is None else '${}'.format(aav)
+
         values.append(
             [
               player.get('position', default),
               player.get('name', default),
               player.get('eligibility', default),
+              first_copy_top_bid,
+              second_copy_top_bid,
+              '',
               player.get('birthdate_formatted', default),
               player.get('age', default),
               player.get('team', default),
@@ -119,9 +138,72 @@ def update_player_pools():
           result.get('updatedCells'))
       )
 
-# update_player_pools()
+def update_scholarship_trackers():
+  # Call the Sheets API
+  for franchise_id, franchise in ld.franchises.items():
+    conference_id = ld.conference_id_from_franchise_id(franchise_id)
+    SPREADSHEET_ID = config.SCHOLARSHIP_TRACKER_SHEETS[conference_id]
 
-# pprint.pprint(ld.league_search(ld.franchises, {'id': '0005'}))
+    team_ref = '{}'.format(franchise.get('name'))
+
+    RANGE_NAME = '{}{}'.format(
+        team_ref,
+        config.SCHOLARSHIP_TRACKER_CONFIG['cell_range']
+    )
+
+    default = 'N/A'
+    auction_info = ad.auctions_for_franchise(franchise_id)
+
+    values = []
+    for player_id, auction in auction_info.items():
+      player = pp.eligible_players[player_id]
+      # {Position: QB, Player: Deshaun Watson, Year: FR, Scholarship: 50, Notes: r17}
+      values.append(
+          [
+            player.get('position', default),
+            player.get('display_name', default),
+            player.get('eligibility', default),
+            '${}'.format(auction.get('top_bid')),
+            '-'
+          ]
+      )
+    body = {
+      'range': RANGE_NAME,
+      'majorDimension': 'ROWS',
+      'values': values
+    }
+    result = service.spreadsheets().values().update(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME,
+        valueInputOption=VALUE_INPUT_OPTION,
+        body=body).execute()
+    print('{0}: {1} cells updated.'.format(
+        ld.conferences[conference_id].get('name'),
+        result.get('updatedCells'))
+    )
+
+
+transactions = mfl_api.transactions(
+    league_id=config.LEAGUE_CONFIG['id']
+)['transactions']['transaction']
+
+ad = Auction_Data(ld=ld, transactions=transactions)
+
+# update_player_pools()
+# update_scholarship_trackers()
+# ad.conference_totals()
+
+
+player_name = 'JuJu Smith-Schuster'
+ad.auctions_for_player_name(player_pool=pp, player_name=player_name)
+
+
+
+# pprint.pprint(ad.auctions_for_franchise(franchise_id='0005'))
+
+# pprint.pprint(ld.franchises)
+# pprint.pprint(ld.divisions)
+# pprint.pprint(ld.conferences)
 
 # dudes = pp.player_search({'display_name': 'Tyler Lockett'})
 # for dude_id, dude in dudes.items():
@@ -134,36 +216,9 @@ def update_player_pools():
 #       dude_id
 #   ))
 
-transactions = mfl_api.transactions(
-    league_id=config.LEAGUE_CONFIG['id']
-)['transactions']['transaction']
-
-ad = Auction_Data(ld=ld, transactions=transactions)
-
-c_totals = {c: {'spent': 0, 'count': 0} for c in ld.conferences}
-for c, pa in ad.conference_auctions.items():
-  for p, a in pa.items():
-    for s in a:
-      # pprint.pprint(a)
-      # print('Player: {}; Type: {}'.format(p, type(s)))
-      c_totals[c]['spent'] += int(s.get('top_bid'))
-      c_totals[c]['count'] += 1
-
-for c_id, info in c_totals.items():
-  funds = 16000 if ld.conferences[c_id]['name'] == 'Mid 16' else 14000
-  spent = info['spent']
-  getcontext().prec = 4
-  allocation = Decimal(spent) / Decimal(funds) * 100
-
-  print('{}; Auctions: {}; Spent: ${}; Funds: ${}; {}% Allocation'.format(
-      ld.conferences[c_id]['name'],
-      info['count'],
-      spent,
-      funds,
-      allocation
-  ))
 
 
+# pprint.pprint(ad.conference_auctions['00'])
 
 
 # results = mfl_api.auction_results(config.LEAGUE_CONFIG['id'])
