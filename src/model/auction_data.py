@@ -73,16 +73,19 @@ class Auction_Data:
 
     for c_id, info in c_totals.items():
       funds = 16000 if self.ld.conferences[c_id]['name'] == 'Mid 16' else 14000
+      spots = 320 if self.ld.conferences[c_id]['name'] == 'Mid 16' else 280
       spent = info['spent']
       getcontext().prec = 4
       allocation = Decimal(spent) / Decimal(funds) * 100
+      roster_pct = Decimal(info['count']) / Decimal(spots) * 100
 
-      print('{}; Auctions: {}; Spent: ${}; Funds: ${}; {}% Allocation'.format(
-          self.ld.conferences[c_id]['name'],
-          info['count'],
-          spent,
-          funds,
-          allocation
+      print('{}; Auctions: {}; Spent: ${}/${} ({}%); Rosters {}% Full'.format(
+            self.ld.conferences[c_id]['name'],
+            info['count'],
+            spent,
+            funds,
+            allocation,
+            roster_pct
       ))
 
   def auctions_for_franchise_generator(self, franchise_id):
@@ -141,6 +144,9 @@ class Auction_Data:
 
     getcontext().prec = 5
     return Decimal(auction_sum) / Decimal(auction_count)
+
+  def top_salaries_by_position(self):
+    print('test')
 
 
 
