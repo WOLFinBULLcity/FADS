@@ -192,14 +192,25 @@ transactions = mfl_api.transactions(
     league_id=config.LEAGUE_CONFIG['id']
 )['transactions']['transaction']
 
+# print(type(transactions))
+
+# rt = transactions[::-1]
+#
+# print('Found {} transactions; Reversed: {}'.format(
+#     len(transactions),
+#     len(rt)
+# ))
+# pprint.pprint(transactions)
+
 ad = Auction_Data(ld=ld, transactions=transactions)
 
-# update_player_pools()
 ad.conference_totals()
 
+# update_player_pools()
 
-player_name = 'O.J. Howard'
-ad.auctions_for_player_name(player_pool=pp, player_name=player_name)
+
+# player_name = 'Hunter Henry'
+# ad.auctions_for_player_name(player_pool=pp, player_name=player_name)
 
 
 # dudes = pp.player_search({'display_name': 'Tyler Lockett'})

@@ -4,18 +4,18 @@ from decimal import *
 from model.league_data import League_Data
 
 import itertools
-import pprint
 
 
 class Auction_Data:
 
-  def __init__(self, ld: League_Data, transactions: dict):
+  def __init__(self, ld: League_Data, transactions: list):
     self.ld: League_Data = ld
-    self.transactions: dict = transactions
-
+    self.transactions: list = transactions
     self.conference_auctions = {c: {} for c in ld.conferences}
 
-    for t in reversed(transactions):
+    self.chronological_order()
+
+    for t in self.transactions:
       if t['type'] not in ['AUCTION_BID', 'AUCTION_WON']:
         continue
 
@@ -24,6 +24,7 @@ class Auction_Data:
       transaction = t.pop('transaction')
       p_id, raw_amount, discard = transaction.split('|')
       t['amount'] = ''.join(itertools.takewhile(str.isdigit, raw_amount))
+
 
       # Is this a nomination?
       if t['amount'] == '1':
@@ -144,6 +145,15 @@ class Auction_Data:
 
     getcontext().prec = 5
     return Decimal(auction_sum) / Decimal(auction_count)
+
+  def chronological_order(self):
+    # newlist = sorted(list_to_be_sorted, key=lambda k: k['name'])
+    sort_on = 'timestamp'
+
+    self.transactions = sorted(
+        self.transactions,
+        key=lambda item: item[sort_on]
+    )
 
   def top_salaries_by_position(self):
     print('test')
