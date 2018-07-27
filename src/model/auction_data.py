@@ -147,42 +147,9 @@ class Auction_Data:
     return Decimal(auction_sum) / Decimal(auction_count)
 
   def chronological_order(self):
-    # newlist = sorted(list_to_be_sorted, key=lambda k: k['name'])
     sort_on = 'timestamp'
 
     self.transactions = sorted(
         self.transactions,
         key=lambda item: item[sort_on]
     )
-
-  def top_salaries_by_position(self):
-    print('test')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # {'timestamp': '1525192679', 'franchise': '0053', 'transaction': '12610|173|', 'type': 'AUCTION_WON'}
-    # {'timestamp': '1525087225', 'franchise': '0041', 'transaction': '12171|5|', 'type': 'AUCTION_BID'}
-
-    # for bid in bids:
-
-
-
-
-

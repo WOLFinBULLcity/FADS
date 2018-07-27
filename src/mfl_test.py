@@ -181,10 +181,6 @@ def update_scholarship_trackers():
           body=body).execute()
     except:
       print('Error updating sheet range {}. Skipping'.format(RANGE_NAME))
-    # print('{0}: {1} cells updated.'.format(
-    #     ld.conferences[conference_id].get('name'),
-    #     result.get('updatedCells'))
-    # )
   print("Scholarship Trackers update completed.")
 
 
@@ -204,7 +200,7 @@ transactions = mfl_api.transactions(
 
 ad = Auction_Data(ld=ld, transactions=transactions)
 
-ad.conference_totals()
+# ad.conference_totals()
 
 # update_player_pools()
 
@@ -224,6 +220,34 @@ ad.conference_totals()
 #       dude_id
 #   ))
 
+# dudes = pp.player_search({'college': 'North Carolina State'})
+# for dude_id, dude in dudes.items():
+#   print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}; ID: {}'.format(
+#       dude.get('name'),
+#       dude.get('position'),
+#       dude.get('draft_year'),
+#       dude.get('college'),
+#       dude.get('team'),
+#       dude_id
+#   ))
+
+dudes = pp.player_search(
+    params={
+      'college': 'Oklahoma State',
+      'team': 'PIT'
+    },
+    target=pp.eligible_players,
+    expression='OR'
+)
+for dude_id, dude in dudes.items():
+  print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}; ID: {}'.format(
+      dude.get('name'),
+      dude.get('position'),
+      dude.get('draft_year'),
+      dude.get('college'),
+      dude.get('team'),
+      dude_id
+  ))
 
 # Save records
 with open(player_pool_file, 'wb') as f:
