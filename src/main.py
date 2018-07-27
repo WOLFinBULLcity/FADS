@@ -94,6 +94,9 @@ def update_player_pools():
         first_copy_top_bid = ''
         second_copy_top_bid = ''
 
+        # Commenting this out because people didn't want this data included on
+        # the sheet.
+        #
         # pa = ad.auctions_for_player(
         #     conference_id=conference_id,
         #     player_id=player_id
@@ -138,77 +141,10 @@ def update_player_pools():
           result.get('updatedCells'))
       )
 
-def update_scholarship_trackers():
-  # Call the Sheets API
-  for franchise_id, franchise in ld.franchises.items():
-    conference_id = ld.conference_id_from_franchise_id(franchise_id)
-    SPREADSHEET_ID = config.SCHOLARSHIP_TRACKER_SHEETS[conference_id]
+update_player_pools()
 
-    team_ref = '{}'.format(franchise.get('name'))
-
-    RANGE_NAME = '{}{}'.format(
-        team_ref,
-        config.SCHOLARSHIP_TRACKER_CONFIG['cell_range']
-    )
-
-    default = 'N/A'
-    auction_info = ad.auctions_for_franchise(franchise_id)
-
-    values = []
-    for player_id, auction in auction_info.items():
-      player = pp.eligible_players[player_id]
-      # {Position: QB, Player: Deshaun Watson, Year: FR, Scholarship: 50, Notes: r17}
-      values.append(
-          [
-            player.get('position', default),
-            player.get('display_name', default),
-            player.get('eligibility', default),
-            '${}'.format(auction.get('top_bid')),
-            '-'
-          ]
-      )
-    body = {
-      'range': RANGE_NAME,
-      'majorDimension': 'ROWS',
-      'values': values
-    }
-
-    try:
-      result = service.spreadsheets().values().update(
-          spreadsheetId=SPREADSHEET_ID,
-          range=RANGE_NAME,
-          valueInputOption=VALUE_INPUT_OPTION,
-          body=body).execute()
-    except:
-      print('Error updating sheet range {}. Skipping'.format(RANGE_NAME))
-  print("Scholarship Trackers update completed.")
-
-
-transactions = mfl_api.transactions(
-    league_id=config.LEAGUE_CONFIG['id']
-)['transactions']['transaction']
-
-# print(type(transactions))
-
-# rt = transactions[::-1]
+#Example player search usage
 #
-# print('Found {} transactions; Reversed: {}'.format(
-#     len(transactions),
-#     len(rt)
-# ))
-# pprint.pprint(transactions)
-
-ad = Auction_Data(ld=ld, transactions=transactions)
-
-# ad.conference_totals()
-
-# update_player_pools()
-
-
-# player_name = 'Hunter Henry'
-# ad.auctions_for_player_name(player_pool=pp, player_name=player_name)
-
-
 # dudes = pp.player_search({'display_name': 'Tyler Lockett'})
 # for dude_id, dude in dudes.items():
 #   print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}; ID: {}'.format(
@@ -221,6 +157,20 @@ ad = Auction_Data(ld=ld, transactions=transactions)
 #   ))
 
 # dudes = pp.player_search({'college': 'North Carolina State'})
+# for dude_id, dude in dudes.items():
+#   print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}; ID: {}'.format(
+#       dude.get('name'),
+#       dude.get('position'),
+#       dude.get('draft_year'),
+#       dude.get('college'),
+#       dude.get('team'),
+#       dude_id
+#   ))
+
+# dudes = pp.player_search({
+#       'college': 'Oklahoma State',
+#       'team': 'PIT'
+#     })
 # for dude_id, dude in dudes.items():
 #   print('Name: {}; Pos: {}; Drafted: {}; College: {}; Team: {}; ID: {}'.format(
 #       dude.get('name'),

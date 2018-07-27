@@ -122,10 +122,6 @@ def update_scholarship_trackers():
           body=body).execute()
     except:
       print('Error updating sheet range {}. Skipping'.format(RANGE_NAME))
-    # print('{0}: {1} cells updated.'.format(
-    #     ld.conferences[conference_id].get('name'),
-    #     result.get('updatedCells'))
-    # )
   print("Scholarship Trackers update completed.")
 
 scheduler = BlockingScheduler()
