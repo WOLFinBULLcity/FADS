@@ -3,7 +3,6 @@ from collections import OrderedDict
 from datetime import datetime
 
 import math
-import pprint
 
 
 class Player_Pool:
@@ -51,20 +50,17 @@ class Player_Pool:
       yield player
 
   def filter_by_position(self):
-    num_eligible_players = 0
     for player in self.eligible_player_generator():
       # Convert list of dictionaries to dictionary indexed on ID
       player_id = player.pop("id")
 
       # Add all eligible players to the eligible players list
       self.eligible_players[player_id] = player
-      num_eligible_players += 1
 
       # Then add the player to the appropriate position-specific list
       pos_list_ref = player['position'] + 's'
       pos_list = getattr(self, pos_list_ref)
       pos_list[player_id] = player
-    pprint.pprint(num_eligible_players)
 
   def alphabetize(self):
     sort_on = 'name'
